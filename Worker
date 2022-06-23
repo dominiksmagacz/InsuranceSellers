@@ -1,0 +1,533 @@
+using CSharp_MetaBots.ExcelMetabot;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Data.OleDb;
+using IExcel = Microsoft.Office.Interop.Excel;
+
+namespace Insurance {
+	
+	static class DictExtension {
+		public static TValue GetValueOrDefault<TKey, TValue>(this Dictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue = default(TValue)) {
+			if (dictionary == null) {
+				throw new ArgumentNullException(nameof (dictionary));
+			} // using C# 6
+			if (key == null) {
+				throw new ArgumentNullException(nameof (key));
+			} //  using C# 6
+
+			TValue value;
+			return dictionary.TryGetValue(key, out value) ? value : defaultValue;
+		}
+	}
+	
+	
+	
+	public class ExcelWorker {
+		public static Dictionary<string, string> namesSapID = new Dictionary<string, string>();
+		public static Dictionary<string, string> statusZatrudnienia = new Dictionary<string, string>();
+		public static Dictionary<string, string> pzuZycie = new Dictionary<string, string>();
+		public static Dictionary<string, string> pzu = new Dictionary<string, string>();
+		public static Dictionary<string, string> nn = new Dictionary<string, string>();
+		public static Dictionary<string, string> nnM = new Dictionary<string, string>();
+		public static Dictionary<string, string> avz = new Dictionary<string, string>();
+		public static Dictionary<string, string> avm = new Dictionary<string, string>();
+		public static Dictionary<string, int> quantitySells = new Dictionary<string, int>();
+		public static Dictionary<string, int> lifeInsurance = new Dictionary<string, int>();
+		public static Dictionary<string, int> carInsurance = new Dictionary<string, int>();
+		public static Dictionary<string, int> quantitySellsCarInsurance = new Dictionary<string, int>();
+		public static Dictionary<string, int> quantitySellsLifeInsurance = new Dictionary<string, int>();
+
+
+		public static string nProd;
+		public static string tFirma;
+
+
+
+		public static void changeToXls(Excel excel, string path, string temp, string name) {
+
+			excel.Open(path);
+			excel.SaveAs(temp,name,Excel.FileExtensionType.Xls);
+			excel.Quit();
+		}
+
+
+		public static void generateReportOutsourcing() {
+
+			Excel excel = new Excel();
+			excel.AddWorkbook();
+			excel.ActivateSheet(1);
+			excel.Show();
+			int i = 2;
+			excel.SetValue(1, 1, "Name");
+			excel.SetValue(1, 2, "SAPID");
+			excel.SetValue(1, 3, "STATUS_ZATRUDNIENIA");
+			excel.SetValue(1, 4, "NN_STATUS");
+			excel.SetValue(1, 5, "AVM_STATUS");
+			excel.SetValue(1, 6, "Sprzedaż zewnętrzna ubezpieczenia na życie");
+			excel.SetValue(1, 7, "Ilości ZCC");
+			excel.SetValue(1, 8, "Sprzedaż zewnętrzna ubezpieczenia auta");
+			excel.SetValue(1, 9, "Ilości ZCC");
+
+
+			if (lifeInsurance.Count() >0) {
+				foreach (var d in namesSapID) {
+					excel.SetValue(i, 1, d.Value);
+					excel.SetValue(i, 2, d.Key);
+					excel.SetValue(i, 3, DictExtension.GetValueOrDefault(statusZatrudnienia, d.Key.ToString()));
+					excel.SetValue(i, 4, DictExtension.GetValueOrDefault(nn, d.Key.ToString()));
+					excel.SetValue(i, 5, DictExtension.GetValueOrDefault(avm, d.Key.ToString()));
+
+					excel.SetValue(i, 6, DictExtension.GetValueOrDefault(lifeInsurance, d.Key.ToString()));
+					excel.SetValue(i, 7, DictExtension.GetValueOrDefault(quantitySellsLifeInsurance, d.Key.ToString()));
+					i++;
+
+				}
+			}
+			if (carInsurance.Count() >0) {
+				foreach (var d in namesSapID) {
+					excel.SetValue(i, 1, d.Key);
+					excel.SetValue(i, 2, d.Value);
+					excel.SetValue(i, 3, DictExtension.GetValueOrDefault(statusZatrudnienia ,d.Value.ToString()));
+					excel.SetValue(i, 4, DictExtension.GetValueOrDefault(nn, d.Value.ToString()));
+					excel.SetValue(i, 5, DictExtension.GetValueOrDefault(avm, d.Value.ToString()));
+										 
+					excel.SetValue(i, 8, DictExtension.GetValueOrDefault(carInsurance, d.Value.ToString()));
+					excel.SetValue(i, 9, DictExtension.GetValueOrDefault(quantitySellsCarInsurance, d.Value.ToString()));
+					i++;
+
+				}
+			}
+			
+			for (int j = 2; j <= i + 1; j++) {
+				if (excel.GetValue(j, 3) != "Aktywny") {
+					excel.FormatCellColor(j, 1, 255, 0, 0);
+					excel.FormatCellColor(j, 3, 255, 0, 0);
+				}
+			}
+
+			for (int j = 2; j <= i + 1; j++) {
+				for (int o = 4; o<6; o++) {
+					if (excel.GetValue(j, o) != "posiada uprawnienia OFWCA") {
+						excel.FormatCellColor(j, 1, 255, 0, 0);
+						excel.FormatCellColor(j, o, 255, 0, 0);
+					}
+				}
+			}
+			
+			for (int j = 2; j<i; j++){
+				if(excel.GetValue(j, 6) != excel.GetValue(j, 7)){
+					excel.FormatCellColor(j, 6, 255, 0, 0);
+					excel.FormatCellColor(j, 7, 255, 0, 0);
+				}
+			}
+		}
+
+
+		public static void generateReportHapudo(string choise) {
+
+			Excel excel = new Excel();
+			excel.AddWorkbook();
+			excel.ActivateSheet(1);
+			excel.Show();
+			int i = 2;
+			excel.SetValue(1, 1, "Name");
+			excel.SetValue(1, 2, "SAPID");
+			excel.SetValue(1, 3, "STATUS_ZATRUDNIENIA");
+			excel.SetValue(1, 4, "PZUZ_STATUS");
+			excel.SetValue(1, 5, "PZU_STATUS");
+			excel.SetValue(1, 6, "NN_STATUS");
+			excel.SetValue(1, 7, "NNM_STATUS");
+			excel.SetValue(1, 8, "AVZ_STATUS");
+			excel.SetValue(1, 9, "AVM_STATUS");
+			if (choise == "1" || choise == "2") {
+				excel.SetValue(1, 10, "Sprzedaż zewnętrzna ubezpieczenia na życie");
+				excel.SetValue(1, 11, "Ilości HAPUDO");
+				excel.SetValue(1, 12, "Sprzedaż zewnętrzna ubezpieczenia auta");
+				excel.SetValue(1, 13, "Ilości HAPUDO");
+
+
+			}
+
+			foreach (var d in namesSapID) {
+				excel.SetValue(i, 1, d.Key);
+				excel.SetValue(i, 2, d.Value);
+				excel.SetValue(i, 3, DictExtension.GetValueOrDefault(statusZatrudnienia,d.Value));
+				excel.SetValue(i, 4, DictExtension.GetValueOrDefault(pzuZycie, d.Value));
+				excel.SetValue(i, 5, DictExtension.GetValueOrDefault(pzu, d.Value));
+				excel.SetValue(i, 6, DictExtension.GetValueOrDefault(nn, d.Value));
+				excel.SetValue(i, 7, DictExtension.GetValueOrDefault(nnM, d.Value));
+				excel.SetValue(i, 8, DictExtension.GetValueOrDefault(avz, d.Value));
+				excel.SetValue(i, 9, DictExtension.GetValueOrDefault(avm, d.Value));
+				if (choise == "1" || choise == "2") {
+					excel.SetValue(i, 10, DictExtension.GetValueOrDefault(lifeInsurance, d.Value));
+					excel.SetValue(i, 11, DictExtension.GetValueOrDefault(quantitySellsLifeInsurance, d.Value));
+					excel.SetValue(i, 12, DictExtension.GetValueOrDefault(carInsurance, d.Value));
+					excel.SetValue(i, 13, DictExtension.GetValueOrDefault(quantitySellsCarInsurance, d.Value));
+
+				}
+
+				i++;
+			}
+
+			for (int j = 2; j <= i + 1; j++) {
+				if (excel.GetValue(j, 3) != "Aktywny") {
+					excel.FormatCellColor(j, 1, 255, 0, 0);
+					excel.FormatCellColor(j, 3, 255, 0, 0);
+				}
+			}
+
+			for (int j = 2; j <= i + 1; j++) {
+				for (int o = 4; o<10; o++) {
+					if (excel.GetValue(j, o) != "posiada uprawnienia OFWCA") {
+						excel.FormatCellColor(j, 1, 255, 0, 0);
+						excel.FormatCellColor(j, o, 255, 0, 0);
+					}
+				}
+			}
+		}
+
+
+		public static void connectToSQL(string pathFileToSQL, string choose, bool flag = true, string pathXLSXfile = "default") {
+
+
+			string myConnection = $"Provider=Microsoft.Jet.OLEDB.4.0;Data Source={pathFileToSQL}.xls;Extended Properties='Excel 8.0;HDR=YES;IMEX=1'";
+			OleDbConnection Connection = new OleDbConnection(myConnection);
+			Connection.Open();
+
+
+			if (choose == "1") {
+				System.Console.WriteLine("-----------------------Uruchamiam takeNameSeller_________________________________________________");
+				takeNameSeller(Connection);
+			}
+			else if (choose == "2") {
+				System.Console.WriteLine("-----------------------Uruchamiam takeStateInsurance _________________________________________________");
+				takeStateInsurance(Connection);
+				if (flag) {
+					System.Console.WriteLine("-----------------------Uruchamiam takeQuantityCar _________________________________________________");
+					takeQuantityCar(pathXLSXfile);
+					System.Console.WriteLine("-----------------------Uruchamiam takeQuantityLife _________________________________________________");
+					takeQuantityLife(pathXLSXfile);
+				}
+			}
+			Connection.Close();
+		}
+
+
+		public static void connectToSQLClients(string pathFileToSQL, string choose, bool flag = true, string pathXLSXfile = "default") {
+
+
+			string myConnection = $"Provider=Microsoft.Jet.OLEDB.4.0;Data Source={pathFileToSQL}.xls;Extended Properties='Excel 8.0;HDR=YES;IMEX=1'";
+			OleDbConnection Connection = new OleDbConnection(myConnection);
+			Connection.Open();
+			if (choose == "1") {
+				System.Console.WriteLine("-----------------------Uruchamiam takeNameSeller_________________________________________________");
+				takeNameSeller(Connection);
+			}
+			else if (choose == "2") {
+				System.Console.WriteLine("-----------------------Uruchamiam takeStateInsurance _________________________________________________");
+				takeStateInsuranceClients(Connection);
+			}
+			Connection.Close();
+		}
+
+		public static void takeQuantityCar(string path) {
+
+
+			var recommendationList = LoadFile(path, "A2:AQ", "vwRcdct");
+			foreach (var item in carInsurance) {
+
+				var el = recommendationList.Where(x => x[1].Equals(tFirma) && x[14].Equals("15") && x[42].Equals(item.Key)).Count();
+				quantitySellsCarInsurance.Add(item.Key, el);
+			}
+			System.Console.WriteLine("quantitySellsCarInsurance-------------------------");
+			int i = 1;
+			foreach (var call in quantitySellsCarInsurance) {
+				Console.WriteLine(call.Key + " -- " + call.Value);
+				i++;
+				System.Console.WriteLine(i);
+			}
+		}
+
+
+		public static void takeQuantityLife(string path) {
+
+
+			var recommendationList = LoadFile(path, "A2:AQ", "vwRcdct");
+			foreach (var item in lifeInsurance) {
+				var el = recommendationList.Where(x => x[1].Equals(tFirma) && x[14].Equals("7") && x[42].Equals(item.Key)).Count();
+				quantitySellsLifeInsurance.Add(item.Key, el);
+			}
+
+			System.Console.WriteLine("quantitySellsLifeInsurance--------------------");
+			int i = 1;
+			foreach (var call in quantitySellsLifeInsurance) {
+				Console.WriteLine(call.Key + " -- " + call.Value);
+				i++;
+				System.Console.WriteLine(i);
+			}
+		}
+
+
+		public static void takeQuantity(string path) {
+
+
+			var recommendationList = LoadFile(path, "A2:AQ", "vwRcdct");
+			foreach (var item in namesSapID) {
+				var el = recommendationList.Where(x => x[1].Equals(tFirma) && x[14].Equals(nProd) && x[41].Equals(item.Key)).Count();
+				quantitySells.Add(item.Key, el);
+			}
+			System.Console.WriteLine("WYpisanie ilości-----------------------------");
+			foreach (var item in quantitySells) {
+				System.Console.WriteLine(item.Key + " " + item.Value);
+			}
+			Console.WriteLine("............");
+			Console.WriteLine("///////////");
+		}
+
+
+		public static void takeNameSeller(OleDbConnection Connection) {
+
+			int i = 0;
+			OleDbCommand Command = new OleDbCommand($"SELECT DISTINCT([tAgentid]), [SAPID] FROM [cos$] WHERE [tFirma] LIKE '{tFirma}' AND [nProd] LIKE '{nProd}'", Connection);
+			OleDbDataReader reader = Command.ExecuteReader();
+			while (reader.Read()) {
+				string nameAccount = reader["tAgentid"].ToString();
+				System.Console.WriteLine("%" + nameAccount + "%");
+				if (!namesSapID.ContainsKey(nameAccount)) {
+					namesSapID.Add(reader["tAgentid"].ToString(), reader["SAPID"].ToString());
+				}
+			}
+
+			foreach (var call in namesSapID) {
+				Console.WriteLine(call.Key + " -- " + call.Value);
+				i++;
+				System.Console.WriteLine(i);
+			}
+		}
+
+
+		public static void takeStateInsurance(OleDbConnection Connection) {
+
+			foreach (var element in namesSapID) {
+				string value = element.Value;
+				System.Console.WriteLine(value);
+				OleDbCommand Command = new OleDbCommand($"SELECT [PZU_STATUS], [PZUZ_status], [STATUS_ZATRUDNIENIA], [NN_status], [NNM_status], [AVZ_status], [AVM_status] FROM [zrzut$] WHERE [SAP_ID] LIKE '{value}'", Connection);
+				OleDbDataReader reader = Command.ExecuteReader();
+				while (reader.Read()) {
+					if (!pzuZycie.ContainsKey(value)) {
+						pzuZycie.Add(value, reader["PZUZ_status"].ToString());
+					}
+					if (!pzu.ContainsKey(value)) {
+						pzu.Add(value, reader["PZU_STATUS"].ToString());
+					}
+					if (!statusZatrudnienia.ContainsKey(value)) {
+						statusZatrudnienia.Add(value, reader["STATUS_ZATRUDNIENIA"].ToString());
+					}
+					if (!nn.ContainsKey(value)) {
+						nn.Add(value, reader["NN_status"].ToString());
+					}
+					if (!nnM.ContainsKey(value)) {
+						nnM.Add(value, reader["NNM_status"].ToString());
+					}
+					if (!avz.ContainsKey(value)) {
+						avz.Add(value, reader["AVZ_status"].ToString());
+					}
+					if (!avm.ContainsKey(value)) {
+						avm.Add(value, reader["AVM_status"].ToString());
+					}
+				}
+			}
+
+
+			int i = 1;
+			System.Console.WriteLine("pzu Zycie");
+			foreach (var call in pzuZycie) {
+				Console.WriteLine(call.Key + " -- " + call.Value);
+				i++;
+				System.Console.WriteLine(i);
+			}
+		}
+
+
+		public static void takeStateInsuranceClients(OleDbConnection Connection) {
+
+			if (lifeInsurance.Count() >0) {
+				foreach (var element in lifeInsurance) {
+					string value = element.Key;
+
+					System.Console.WriteLine(value);
+					OleDbCommand Command = new OleDbCommand($"SELECT [STATUS_ZATRUDNIENIA], [NN_status], [AVM_status] FROM [zrzut$] WHERE [SAP_ID] LIKE '{value}'", Connection);
+					OleDbDataReader reader = Command.ExecuteReader();
+					while (reader.Read()) {
+						if (!statusZatrudnienia.ContainsKey(value)) {
+							statusZatrudnienia.Add(value, reader["STATUS_ZATRUDNIENIA"].ToString());
+						}
+						if (!nn.ContainsKey(value)) {
+							nn.Add(value, reader["NN_status"].ToString());
+						}
+						if (!avm.ContainsKey(value)) {
+							avm.Add(value, reader["AVM_status"].ToString());
+						}
+					}
+				}
+			}
+
+			if (carInsurance.Count() >0) {
+				foreach (var element in carInsurance) {
+					string value = element.Key;
+
+					System.Console.WriteLine(value);
+					OleDbCommand Command = new OleDbCommand($"SELECT [STATUS_ZATRUDNIENIA], [NN_status], [AVM_status] FROM [zrzut$] WHERE [SAP_ID] LIKE '{value}'", Connection);
+					OleDbDataReader reader = Command.ExecuteReader();
+					while (reader.Read()) {
+						if (!statusZatrudnienia.ContainsKey(value)) {
+							statusZatrudnienia.Add(value, reader["STATUS_ZATRUDNIENIA"].ToString());
+						}
+						if (!nn.ContainsKey(value)) {
+							nn.Add(value, reader["NN_status"].ToString());
+						}
+						if (!avm.ContainsKey(value)) {
+							avm.Add(value, reader["AVM_status"].ToString());
+						}
+					}
+				}
+			}
+
+			int i = 1;
+			System.Console.WriteLine("pzu Zycie");
+			foreach (var call in statusZatrudnienia) {
+				Console.WriteLine(call.Key + " -- " + call.Value);
+				i++;
+				System.Console.WriteLine(i);
+			}
+		}
+
+		public static int removePLN(Excel excel, int col, int row) {
+
+			string buff = excel.GetValueText(row, col);
+			int length = buff.Length;
+			int startIndex = buff.IndexOf(',');
+			if (startIndex > 0)
+				buff = buff.Remove(startIndex);
+			else
+				buff = buff.Remove(buff.Length -3);
+			return Int32.Parse(buff);
+		}
+
+
+		public static void clientOneSelers(Excel excel, string path) {
+
+			excel.Open(path);
+			excel.ActivateSheet(1);
+			int lastRow = excel.GetLastUsedRow();
+			for (int i = 4; i < lastRow; i++) {
+				if (excel.GetValue(i, 2) != "" && (excel.GetValue(i, 4) != "" || excel.GetValue(i, 7) != "")) {
+					namesSapID.Add(excel.GetValue(i, 2), excel.GetValue(i, 3));
+					if (excel.GetValue(i, 4) != "") {
+
+						int temp = removePLN(excel, 4, i);
+						lifeInsurance.Add(excel.GetValue(i, 2), temp);
+					}
+					if (excel.GetValue(i, 7) != "") {
+
+						int temp = removePLN(excel, 7, i);
+						carInsurance.Add(excel.GetValue(i, 2), temp);
+					}
+				}
+			}
+			excel.Close();
+			excel.Quit();
+
+			foreach (var item in namesSapID) {
+				System.Console.WriteLine(item.Key + " " + item.Value);
+			}
+			foreach (var item in carInsurance) {
+				System.Console.WriteLine(item.Key + " " + item.Value);
+			}
+			foreach (var item in lifeInsurance) {
+				System.Console.WriteLine(item.Key + " " + item.Value);
+			}
+		}
+
+
+		public static void clientTwoSelers(Excel excel, string path) {
+
+			excel.Open(path);
+			excel.ActivateSheet(1);
+			int lastRow = excel.GetLastUsedRow();
+			for (int i = 3; i < lastRow; i++) {
+				if (excel.GetValue(i, 2) != "" && (excel.GetValue(i, 4) != "" || excel.GetValue(i, 13) != "")) {
+					namesSapID.Add(excel.GetValue(i, 2), excel.GetValue(i, 3));
+					if (excel.GetValue(i, 4) != "") {
+						int temp = removePLN(excel, 4, i);
+						lifeInsurance.Add(excel.GetValue(i, 2), temp);
+					}
+					if (excel.GetValue(i, 13) != "") {
+						int temp = removePLN(excel, 13, i);
+						carInsurance.Add(excel.GetValue(i, 2), temp);
+					}
+				}
+			}
+			excel.Close();
+			excel.Quit();
+			System.Console.WriteLine("namesSapID");
+			foreach(var item in namesSapID){
+				System.Console.WriteLine(item.Key + " " + item.Value);
+			}
+			System.Console.WriteLine("carInsurance");
+			foreach (var item in carInsurance){
+				System.Console.WriteLine(item.Key + " " + item.Value);
+			}
+			System.Console.WriteLine("lifeInsurance");
+			foreach (var item in lifeInsurance){
+				System.Console.WriteLine(item.Key + " " + item.Value);
+			}
+		}
+		
+		public static List<string[]> LoadFile(string path, string rangePattern, string sheetName = ""){
+			System.Console.WriteLine("wczytuję: " + path);
+			Excel ex = new Excel();
+			ex.Open(path);
+			if(string.IsNullOrEmpty(sheetName)){
+				ex.ActivateSheet(1);
+			}else
+			{
+				try{
+					ex.ActivateSheet(sheetName);
+				}catch{
+					System.Console.WriteLine("Nie udało się otworzyć arkusza: " + sheetName);
+					return new List<string[]>();
+				}
+			}
+
+			ex.GetExcelWorksheetObject().AutoFilterMode = false; //disable filter if exists to prevent partly reading
+			int lastRow = GetLastRow(ex);
+			var data = ex.GetExcelWorksheetObject().Range[rangePattern + lastRow].Value as dynamic [,];
+			var dataList = GetStringArray(data);
+			ex.Close();
+			ex.Quit();
+			return dataList;
+		}
+
+		public static List<string[]> GetStringArray(dynamic[,] data){
+			var list = new List<string[]>();
+			for (int row = data.GetLowerBound(0); row <= data.GetUpperBound(0); row++)
+			{
+				var arr = new string[data.GetLength(1)];
+				for (int col = data.GetLowerBound(1); col <= data.GetUpperBound(1); col++)
+				{
+					arr[col -1] = Convert.ToString(data[row, col]);
+				}
+				list.Add(arr);
+			}
+			return list;
+		}
+
+		public static int GetLastRow(Excel ex){
+			return ex.GetExcelWorksheetObject().Cells.Find("*", Type.Missing, Type.Missing, Type.Missing, IExcel.XlSearchOrder.xlByRows,
+								IExcel.XlSearchDirection.xlPrevious).Row;
+		}
+		
+    }
+}
