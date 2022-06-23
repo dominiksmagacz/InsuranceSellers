@@ -1,0 +1,81 @@
+using CSharp_MetaBots.ExcelMetabot;
+using System;
+
+namespace Insurance
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+			try{
+				Excel excel = new Excel();
+				string choise = Microsoft.VisualBasic.Interaction.InputBox("Wybierz jedną opcje: \n1. Sprawdzenie clientOne\n2.Sprawdzenie clientTwo.pl\n3.Sprawdzenie ZCC z bazą Hapudo");
+				string clientTwoPL = Microsoft.VisualBasic.Interaction.InputBox("Wprowadz ścieżkę do pliku excel kontakty");
+				string clientOne = Microsoft.VisualBasic.Interaction.InputBox("Wprowadz ścieżkę do pliku excel klienta");
+				string baza = Microsoft.VisualBasic.Interaction.InputBox("Wprowadz ścieżkę do pliku excel baza Hapudo");
+				string ZCC = Microsoft.VisualBasic.Interaction.InputBox("Wprowadz ścieżkę do pliku excel ZCC");
+				string temp = Microsoft.VisualBasic.Interaction.InputBox("Wprowadz ścieżkę dla tymczasowych operacji sam katalog");
+				ExcelWorker.tFirma = Microsoft.VisualBasic.Interaction.InputBox("Wprowadz parametr tFirma");
+				ExcelWorker.nProd = Microsoft.VisualBasic.Interaction.InputBox("Wprowadz parametr nProd");
+				
+				ExcelWorker.changeToXls(excel, baza, temp, "baza");
+				
+				switch (choise){
+					
+				
+					case "1":   //clientOne
+					{
+						bool flag = true;
+						System.Console.WriteLine("Uruchamiam clientOneSelers -----------------------------");
+						ExcelWorker.clientOneSelers(excel, clientOne);
+						System.Console.WriteLine("Uruchamiam conectToSQL 2 -----------------------------");
+						ExcelWorker.connectToSQLClients(temp + "baza", "2",flag,ZCC);
+						System.Console.WriteLine("Uruchamiam takeQuantityCar 2 -----------------------------");
+						ExcelWorker.takeQuantityCar(ZCC);
+						System.Console.WriteLine("Uruchamiam takeQuantityLife 2 -----------------------------");
+						ExcelWorker.takeQuantityLife(ZCC);
+						System.Console.WriteLine("Uruchamiam generateReport 2 -----------------------------");
+						ExcelWorker.generateReportOutsourcing();
+						
+						break;
+					}
+					case "2":  	//Concact.pl
+					{
+						bool flag = true;
+						System.Console.WriteLine("Uruchamiam clientTwoSelers -----------------------------");
+						ExcelWorker.clientTwoSelers(excel, clientTwoPL);
+						System.Console.WriteLine("Uruchamiam conectToSQL 2 -----------------------------");
+						ExcelWorker.connectToSQLClients(temp + "baza", "2",flag,ZCC);
+						System.Console.WriteLine("Uruchamiam takeQuantityCar 2 -----------------------------");
+						ExcelWorker.takeQuantityCar(ZCC);
+						System.Console.WriteLine("Uruchamiam takeQuantityLife 2 -----------------------------");
+						ExcelWorker.takeQuantityLife(ZCC);
+						System.Console.WriteLine("Uruchamiam generateReport 2 -----------------------------");
+						ExcelWorker.generateReportOutsourcing();
+
+						break;
+					}
+					case "3":	//Baza zcc i hapudo
+					{
+						bool flag = false;
+						ExcelWorker.connectToSQL(temp + "zcc1", "1",flag);
+						ExcelWorker.connectToSQL(temp + "baza", "2",flag);
+						ExcelWorker.takeQuantity(ZCC);
+						ExcelWorker.generateReportHapudo(choise);
+						break;
+					}
+					default:
+					{
+						Microsoft.VisualBasic.Interaction.MsgBox("Wybrano złą opcje :(");
+						break;
+					}
+				}
+			}
+			catch(Exception e)
+			{
+				Console.WriteLine(e);
+			}
+			Microsoft.VisualBasic.Interaction.MsgBox("Jupi, proces się zakończył :)");
+        }
+    }
+}
